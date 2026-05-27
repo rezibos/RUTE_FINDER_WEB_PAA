@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Simulasi Rute Kota</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/chat.css" />
+</head>
+
+<body>
+
+  <!-- ══ TOPBAR ══ -->
+  <div id="topbar">
+    <label>Start:</label><select id="start"></select>
+    <label>Tujuan:</label><select id="end"></select>
+    <button id="route-btn" onclick="routeButtonAction()">▶ Cari Rute</button>
+    <button id="pause-btn" class="zoom-btn" onclick="togglePause()" style="display:none;">⏸ Pause</button>
+    <button id="stop-btn" class="reset-btn" onclick="stopSimulation()" style="display:none;">⏹ Stop</button>
+    <button id="cancel-scan-btn" class="reset-btn" onclick="cancelScanning()" style="display:none;">✖ Batal Cari</button>
+    <button id="replay-btn" class="random-btn" onclick="replaySimulation()" style="display:none;">↻ Ulang</button>
+    <button id="kembali-btn" class="reset-btn" onclick="kembaliIdle()" style="display:none;">⬅ Kembali</button>
+    <button class="reset-btn" onclick="resetRoads()">🔄 Reset Jalan</button>
+    <button class="random-btn" onclick="randomizeMap()">🎲 Acak Map</button>
+    <button id="dtable-btn" class="zoom-btn" onclick="dtableToggle()" title="Tabel Dijkstra">📊 Tabel</button>
+  </div>
+
+  <!-- ══ MAIN ROW ══ -->
+  <div id="main-row">
+
+    <!-- Peta -->
+    <div class="map-card">
+      <div id="map-col">
+        <div id="map-container">
+          <svg id="map" width="4200" height="2800">
+            <rect width="4200" height="2800" fill="#6aab4a" />
+            <g id="terrain-layer"></g>
+            <g id="deco-under"></g>
+            <path id="road-shadow" stroke="#1a1a1a" stroke-width="80"  fill="none" stroke-linecap="round" stroke-linejoin="round" opacity="0.22"/>
+            <path id="road-base"   stroke="#4a4a4a" stroke-width="68"  fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+            <path id="road-mid"    stroke="#777"    stroke-width="60"  fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+            <path id="road-line"   stroke="#ffffaa" stroke-width="4"   fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="36 24" opacity="0.65"/>
+            <g id="broken-roads-layer"></g>
+            <g id="road-states-layer"></g>
+            <g id="road-hit-layer"></g>
+            <g id="weight-labels-layer"></g>
+            <path id="highlight-path" stroke="#00e676" stroke-width="24" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity="0.9"/>
+            <g id="city-overlays"></g>
+            <g id="nodes-group"></g>
+            <g id="probe-layer"></g>
+            <!-- Mobil -->
+            <g id="car">
+              <rect x="-22" y="-12" width="44" height="24" fill="#e53935" rx="5"/>
+              <rect x="-9"  y="-8"  width="20" height="16" fill="#90caf9" rx="2" opacity="0.9"/>
+              <rect x="14"  y="-5"  width="7"  height="9"  fill="#ef9a9a" rx="1"/>
+              <rect x="-21" y="-5"  width="7"  height="9"  fill="#ef9a9a" rx="1"/>
+              <g class="wheel" transform="translate(-12,14)">
+                <circle cx="0" cy="0" r="6" fill="#111"/>
+                <line x1="-4" y1="0" x2="4" y2="0" stroke="white" stroke-width="1.5"/>
+                <line x1="0" y1="-4" x2="0" y2="4" stroke="white" stroke-width="1.5"/>
+              </g>
+              <g class="wheel" transform="translate(12,14)">
+                <circle cx="0" cy="0" r="6" fill="#111"/>
+                <line x1="-4" y1="0" x2="4" y2="0" stroke="white" stroke-width="1.5"/>
+                <line x1="0" y1="-4" x2="0" y2="4" stroke="white" stroke-width="1.5"/>
+              </g>
+            </g>
+          </svg>
+          <div id="zoom-indicator">100%</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Chat card -->
+    <div id="chat-card">
+      <div id="chat-header">
+        <div class="ai-dot"></div>
+        <div>
+          <div class="hdr-title">🧠 AI Navigator</div>
+          <div class="hdr-sub">Analisis rute cerdas</div>
+        </div>
+        <button class="clear-chat-btn" onclick="chatClear()">🗑 Clear</button>
+      </div>
+      <div id="chat-log">
+        <div class="chat-msg sys">
+          <div class="avatar">⚙</div>
+          <div class="bubble">
+            <div class="tag">SISTEM</div><br>
+            Navigator siap. Pilih kota asal &amp; tujuan, lalu klik <b>▶ Cari Rute</b>.
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- end #main-row -->
+
+  <!-- ══ TOOLS ROW ══ -->
+  <div id="tools-row">
+    <span style="font-weight:bold;color:#555;">Kondisi Jalan:</span>
+
+    <div id="tool-rusak" class="tool-btn" onclick="setTool('rusak')">
+      <svg class="tool-ico" viewBox="0 0 44 22">
+        <path d="M2 11 L42 11" stroke="#8b0000" stroke-width="3" stroke-linecap="round"/>
+        <polyline points="7,11 11,7 15,14 19,9 23,14 27,8 31,12 35,7 39,11" fill="none"
+          stroke="#c0392b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      Jalan Rusak
+    </div>
+
+    <div id="tool-perbaikan" class="tool-btn" onclick="setTool('perbaikan')">
+      <svg class="tool-ico" viewBox="0 0 44 22">
+        <rect x="5" y="5" width="9" height="7" rx="1" fill="#ffcc00" stroke="#333"/>
+        <line x1="9.5" y1="12" x2="9.5" y2="20" stroke="#333" stroke-width="1.5"/>
+        <rect x="28" y="5" width="9" height="7" rx="1" fill="#ffcc00" stroke="#333"/>
+        <line x1="32.5" y1="12" x2="32.5" y2="20" stroke="#333" stroke-width="1.5"/>
+      </svg>
+      Perbaikan
+    </div>
+
+    <div id="tool-hujan" class="tool-btn" onclick="setTool('hujan')">
+      <svg class="tool-ico" viewBox="0 0 44 22">
+        <ellipse cx="18" cy="8" rx="9" ry="5" fill="#cfd8dc" stroke="#90a4ae"/>
+        <ellipse cx="27" cy="9" rx="7" ry="4" fill="#cfd8dc" stroke="#90a4ae"/>
+        <line x1="14" y1="15" x2="14" y2="20" stroke="#4fc3f7" stroke-width="2"/>
+        <line x1="20" y1="15" x2="20" y2="20" stroke="#4fc3f7" stroke-width="2"/>
+        <line x1="26" y1="15" x2="26" y2="20" stroke="#4fc3f7" stroke-width="2"/>
+      </svg>
+      Hujan
+    </div>
+
+    <div id="tool-macet" class="tool-btn" onclick="setTool('macet')">
+      <svg class="tool-ico" viewBox="0 0 44 22">
+        <rect x="2"  y="7" width="12" height="7" fill="#e53935" rx="2"/>
+        <rect x="4"  y="5" width="7"  height="5" fill="#90caf9" rx="1" opacity="0.85"/>
+        <circle cx="5"  cy="14" r="2" fill="#222"/>
+        <circle cx="11" cy="14" r="2" fill="#222"/>
+        <rect x="16" y="7" width="12" height="7" fill="#fb8c00" rx="2"/>
+        <rect x="18" y="5" width="7"  height="5" fill="#ffe082" rx="1" opacity="0.85"/>
+        <circle cx="19" cy="14" r="2" fill="#222"/>
+        <circle cx="25" cy="14" r="2" fill="#222"/>
+        <rect x="30" y="7" width="12" height="7" fill="#43a047" rx="2"/>
+        <rect x="32" y="5" width="7"  height="5" fill="#a5d6a7" rx="1" opacity="0.85"/>
+        <circle cx="33" cy="14" r="2" fill="#222"/>
+        <circle cx="39" cy="14" r="2" fill="#222"/>
+      </svg>
+      Macet
+    </div>
+
+    <div style="width:1px;background:#ddd;align-self:stretch;margin:0 4px;"></div>
+
+    <div class="tool-btn" id="tool-clear" onclick="clearAllConditions()" style="color:#b71c1c;">
+      <svg class="tool-ico" viewBox="0 0 44 22">
+        <rect x="13" y="8"  width="18" height="13" rx="2" fill="none" stroke="#b71c1c" stroke-width="2"/>
+        <line x1="10" y1="8"  x2="34" y2="8"  stroke="#b71c1c" stroke-width="2" stroke-linecap="round"/>
+        <rect x="17" y="4"  width="10" height="4" rx="1.5" fill="none" stroke="#b71c1c" stroke-width="1.8"/>
+        <line x1="18" y1="11" x2="18" y2="19" stroke="#b71c1c" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="22" y1="11" x2="22" y2="19" stroke="#b71c1c" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="26" y1="11" x2="26" y2="19" stroke="#b71c1c" stroke-width="1.5" stroke-linecap="round"/>
+      </svg>
+      Clear Kondisi
+    </div>
+  </div>
+
+  <!-- ══ DIJKSTRA TABLE PANEL — draggable floating ══ -->
+  <div id="dijkstra-table-panel">
+    <div id="dt-header">
+      <div class="dt-header-title">
+        <span class="dt-header-dot"></span>
+        <span>Tabel Dijkstra — Real-time</span>
+      </div>
+      <div id="dt-header-controls">
+        <div class="dt-legend-pill">
+          <span><span class="dt-legend-dot locked"></span>Terkunci</span>
+          <span><span class="dt-legend-dot reached"></span>Dijangkau</span>
+          <span><span class="dt-legend-dot pending"></span>Belum</span>
+        </div>
+        <button onclick="dtableHide()">✕</button>
+      </div>
+    </div>
+    <div id="dt-body">
+      <table id="dt-table">
+        <thead>
+          <tr>
+            <th>Node</th>
+            <th>Jarak</th>
+            <th>Dari</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="dt-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ══ SCRIPTS — urutan dependency penting! ══ -->
+  <script src="js/graph-data.js"></script>
+  <script src="js/bezier.js"></script>
+  <script src="js/decorations.js"></script>
+  <script src="js/zoom-pan.js"></script>
+  <script src="js/car.js"></script>
+  <script src="js/chat.js"></script>
+  <script src="js/probe.js"></script>
+  <script src="js/road-states.js"></script>
+  <script src="js/map-draw.js"></script>
+  <script src="js/ui-controls.js"></script>
+  <script src="js/simulation.js"></script>
+  <script src="js/randomize.js"></script>
+  <script src="js/dijkstra-table.js"></script>
+
+  <!-- Init -->
+  <script>
+    randomizeMap();
+    setTool('rusak');
+    updateRouteButtons('idle');
+    window.addEventListener('load', () => { resetView(); });
+  </script>
+
+</body>
+</html>
