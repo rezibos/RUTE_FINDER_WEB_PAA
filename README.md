@@ -83,16 +83,9 @@ Panel kontrol kondisi jalan:
 | ------ | -------- | ------------------------ |
 | Rezi   | `rezi`   | Backend & Algoritma      |
 | Faiz   | `faiz`   | Frontend UI/UX           |
-| Kika   | `kika`   | Animasi & Visualisasi    |
-| Haikal | `haikal` | Dokumentasi & Testing    |
+| Haikal | `haikal` | Animasi & Visualisasi    |
 | Wily   | `wily`   | Integration & Deployment |
-
-## 📅 Jadwal Push
-
-![Jadwal Push](jadwal-push.pdf)
-
-Lihat file `jadwal-push.pdf` untuk detail jadwal push setiap anggota tim.
 
 ## 📄 Lisensi
 
-Project ini dibuat untuk tugas mata kuliah PAA DAN GRAFIKA.
+Project ini dibuat untuk tugas mata kuliah PERANCANGAN DAN ANALISIS ALGORITMA.
